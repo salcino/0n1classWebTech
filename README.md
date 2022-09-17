@@ -5,6 +5,7 @@ Boiler plate Node.js Vue.js Express Sequelize MySQL Bootstrap
 | ----------- | ----------- | ----------- | ----------- |
 |Node.js      |18.9.0       |Back-end     |https://nodejs.org/en/about/
 |Vue.js       |3.2.39       |Front-end    |https://vuejs.org/
+|axios        |0.27.2       |http client  |https://axios-http.com/
 |Express      |4.18.1       |Front-end    |https://expressjs.com/
 |Sequelize    |6            |ORM          |https://sequelize.org/
 |TypeScript   |4.8.3        |JavaScript   |https://www.typescriptlang.org/
