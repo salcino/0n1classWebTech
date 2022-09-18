@@ -27,7 +27,6 @@ Le tecnologie che utilizzeremo sono indicate di seguito.
 |Volar        |0.40.13      |VS Code Ext  |<https://marketplace.visualstudio.com/items?itemName=Vue.volar>|
 |Inkscape     |1.1          |Editor Graph |<https://inkscape.org/it>|
 |paint.net    |4.3.12       |Editor Graph |<https://www.getpaint.net>|
-|             |             |             |             |
 
 Costruiremo un'applicazione web full-stack per pubblicare online dei tutorial dove:
 
@@ -75,7 +74,6 @@ Di seguito l'elenco di API che esporremo:
 |DELETE       |api/tutorials/:id         |elimina tutorial per id   |
 |DELETE       |api/tutorials             |elimina tutti i tutorial  |
 |GET          |api/tutorials?title=[web] |trova tutti i tutorial il cui titolo contiene 'web'|
-|             |                          |                          |
 
 ### Struttura del progetto
 
@@ -130,3 +128,121 @@ found 0 vulnerabilities
 ```
 
 ## Configurazione del web server Express
+
+La prima cosa da fare è creare un file di configurazione che per convenzione si deve chiamare server.js, il file deve avere il seguente contenuto:
+
+``` javascript
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+
+const app = express();
+
+var corsOptions = {
+  origin: "http://localhost:8081"
+};
+app.use(cors(corsOptions));
+// parse requests of content-type - application/json
+app.use(bodyParser.json());
+// parse requests of content-type - application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: true }));
+// simple route
+app.get("/", (req, res) => {
+  res.json({ message: "Benvenuto nell'applicazione Vue." });
+});
+// set port, listen for requests
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Server in esecuzione sulla porta ${PORT}.`);
+});
+```
+
+Cosa dobbiamo fare adesso:
+
+- Importare i moduli express, body-parser e CORS:
+  - Express serve a costruire le API REST;
+  - body-parser aiuta a "parsare" la richiesta ed a creare l'oggetto req.body;
+  - cors fornisce un middleware Express per abilitare CORS con varie opzioni;
+- Creare un'applicazione Express, aggiungere body-parser ed il middleware cors usando il metodo app.use(). Notare che è stata impostata come sorgente: <http://localhost:8081>.
+- definiamo una rotta GET GET solo a scopo di test per vedere se il server parte.
+- ci mettiamo in ascolto sulla porta 8080 per le richieste in arrivo.
+
+Ora lanciamo l'applicazione server con il comando: node server.js.  
+Aprire il browser all'URL <http://localhost:8080>, verrà mostrato il seguente contenuto:
+
+``` json
+{"message":"Benvenuto nell'applicazione Vue."}
+```
+
+## Configurare MySQL e Sequelize
+
+Nella cartella app creare una nuova sotto cartella config nella quale creare un nuovo file db.config.js con il seguente contenuto:
+
+``` json
+module.exports = {
+  HOST: "localhost",
+  USER: "root",
+  PASSWORD: "123456",
+  DB: "testdb",
+  dialect: "mysql",
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  }
+};
+```
+
+I primi cinque parametri sono per la connessione a MySQL, la sezione pool è opzionale ed è utilizzata da Sequelize per la gestione del pool di connessioni:
+
+- max: massimo numero di connessioni nel pool
+- min: minimo numero di connessioni nel pool
+- idle: tempo massimo, in millisecondi, che una connessione viene tenuta prima di essere rilasciata
+- acquire: tempo massimo, in millisecondi, che la connessione nel pool proverà a riprendere la connessione prima di lanciare un'errore.
+
+Per maggiori dettagli, visita la documentazione delle API per il costruttore di Sequelize <https://sequelize.org/master/class/lib/sequelize.js~Sequelize.html#instance-constructor-constructor>.
+
+### Inizializzazione di Sequelize
+
+Inizializzeremo Sequelize nella cartella app/models che conterrà il modello nel passaggio successivo.  
+Creiamo app/models/index.js con il seguente contenuto:
+
+``` javascript
+const dbConfig = require("../config/db.config.js");
+
+const Sequelize = require("sequelize");
+const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
+  host: dbConfig.HOST,
+  dialect: dbConfig.dialect,
+  operatorsAliases: false,
+
+  pool: {
+    max: dbConfig.pool.max,
+    min: dbConfig.pool.min,
+    acquire: dbConfig.pool.acquire,
+    idle: dbConfig.pool.idle
+  }
+});
+
+const db = {};
+
+db.Sequelize = Sequelize;
+db.sequelize = sequelize;
+
+db.tutorials = require("./tutorial.model.js")(sequelize, Sequelize);
+
+module.exports = db;
+
+```
+
+Non dimenticarsi di chiamare il metodo sync() nel file server.js:
+
+``` javascript
+...
+const app = express();
+app.use(...);
+
+const db = require("./app/models");
+db.sequelize.sync();
+...
